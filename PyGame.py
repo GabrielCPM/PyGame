@@ -53,13 +53,13 @@ def run_phase(screen, clock, phase):
     # Configurações de fase
     if phase == 1:
         TOTAL_TIME       = 90.0
-        spawn_interval   = 1500
+        spawn_interval   = 1350
         block_chance     = 0.0
         vertical_chance  = 0.0
         min_platform_gap = 0.0
     else:
         TOTAL_TIME       = 120.0
-        spawn_interval   = 1200
+        spawn_interval   = 1350
         block_chance     = 0.8
         vertical_chance  = 0.2
         min_platform_gap = 0.02 * TOTAL_TIME
@@ -148,53 +148,49 @@ def run_phase(screen, clock, phase):
                     )
                     if spawn_block:
                         last_platform = elapsed_time
-                        if random.random() < vertical_chance:
-                            # Parede 2-blocos
+
+                        # vertical walls: sempre no último terço, antes por chance
+                        if percent >= 66 or random.random() < vertical_chance:
+                            # Paredão de 2 blocos
                             blocks.append(pygame.Rect(base_x,
                                                       ground_y-player_size,
                                                       player_size, player_size))
                             blocks.append(pygame.Rect(base_x,
                                                       ground_y-2*player_size,
                                                       player_size, player_size))
+                            # Spike no topo apenas no último terço
                             if percent >= 66:
                                 h = random.choice([player_size, player_size//2])
                                 spikes.append(pygame.Rect(base_x,
                                                           ground_y-2*player_size-h,
                                                           player_size, h))
                         else:
-                            # Plataforma horizontal
+                            # Plataforma horizontal (máximo 1 grupo de spikes)
                             length = random.randint(1, 10)
                             for i in range(length):
                                 blocks.append(pygame.Rect(base_x + i*player_size,
                                                           ground_y-player_size,
                                                           player_size, player_size))
                             if percent >= 33:
-                                if length <= 5:
-                                    side = random.choice([0, length-1])
-                                    sx   = base_x + side*player_size
-                                    h    = random.choice([player_size, player_size//2])
-                                    spikes.append(pygame.Rect(sx,
+                                # Escolhe início ou fim
+                                pos = random.choice([0, length-1])
+                                group_size = 1 if length <= 4 else random.choice([1, 2])
+                                for g in range(group_size):
+                                    idx = pos + (g if pos == 0 else -g)
+                                    h = random.choice([player_size, player_size//2])
+                                    spikes.append(pygame.Rect(base_x + idx*player_size,
                                                               ground_y-player_size-h,
                                                               player_size, h))
-                                else:
-                                    allowed = list(range(2, length-2))
-                                    n_spikes = random.choice([1, 2, 3])
-                                    for idx in random.sample(allowed, n_spikes):
-                                        sx = base_x + idx*player_size
-                                        h  = random.choice([player_size, player_size//2])
-                                        spikes.append(pygame.Rect(sx,
-                                                                  ground_y-player_size-h,
-                                                                  player_size, h))
                     else:
-                        # spikes solo após gap
+                        # Spikes solo após gap_time
                         if (elapsed_time - last_platform) >= gap_time:
-                            count = random.randint(1, 3)
-                            for i in range(count):
+                            cnt = random.randint(1, 3)
+                            for i in range(cnt):
                                 h = random.choice([player_size, player_size//2])
                                 sx = base_x + i*player_size
                                 spikes.append(pygame.Rect(sx, ground_y-h, player_size, h))
 
-        # Desenha background da fase
+        # Desenha background
         screen.blit(bg_img, (0, 0))
 
         # Salto contínuo
@@ -212,7 +208,7 @@ def run_phase(screen, clock, phase):
             if rotating:
                 angle = 180
             rotating = False
-            # gera faíscas no chão
+            # Faíscas
             for _ in range(5):
                 sparks.append(Spark(player_rect.left, ground_y - 4))
             if keys[pygame.K_SPACE]:
@@ -238,7 +234,7 @@ def run_phase(screen, clock, phase):
         if rotating:
             angle = min(angle + ROTATION_SPEED, 180)
 
-        # Move obstáculos
+        # Move e limpa obstáculos
         for s in spikes: s.x -= scroll_speed
         for b in blocks: b.x -= scroll_speed
         spikes = [s for s in spikes if s.right > 0]
@@ -276,7 +272,7 @@ def run_phase(screen, clock, phase):
         r_rect  = rotated.get_rect(center=player_rect.center)
         screen.blit(rotated, r_rect)
 
-        # % de progresso
+        # Texto de progresso
         pct_surf = font.render(f"{int(percent)}%", True, LINE_COLOR)
         screen.blit(pct_surf, (WIDTH - 120, 10))
 
@@ -304,7 +300,6 @@ def main():
         # Desenha background do menu
         screen.blit(bg_menu, (0, 0))
 
-        # Texto do menu
         title = font.render("Selecione a fase", True, (255,255,255))
         opt1  = font.render("1 - Fase 1",       True, (255,255,255))
         opt2  = font.render("2 - Fase 2",       True, (255,255,255))
@@ -330,4 +325,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main() 
+    main()
