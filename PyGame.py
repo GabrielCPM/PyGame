@@ -36,6 +36,25 @@ def run_phase(screen, clock, phase):
     bg_img = pygame.image.load("assets/img/background.png").convert()
     bg_img = pygame.transform.scale(bg_img, (WIDTH, HEIGHT))
 
+    # Função de explosão de morte
+    def death_explosion(cx, cy):
+        particles = []
+        for _ in range(50):
+            p = Spark(cx, cy)
+            p.vx = random.uniform(-300, 300)
+            p.vy = random.uniform(-300, 300)
+            p.life = 1.0
+            particles.append(p)
+        t = 0.0
+        while t < 1.0:
+            dt_e = clock.tick(FPS) / 1000.0
+            t += dt_e
+            screen.blit(bg_img, (0, 0))
+            for p in particles[:]:
+                p.update(dt_e)
+                p.draw(screen)
+            pygame.display.flip()
+
     # Física do jogador
     player_size      = 50
     GRAVITY          = 1.0
@@ -120,6 +139,7 @@ def run_phase(screen, clock, phase):
             if sp.life <= 0:
                 sparks.remove(sp)
 
+        # Eventos
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 pygame.quit()
@@ -139,7 +159,6 @@ def run_phase(screen, clock, phase):
                         h = random.choice([player_size, player_size//2])
                         sx = base_x + i * player_size
                         spikes.append(pygame.Rect(sx, ground_y-h, player_size, h))
-
                 else:
                     # Fase 2: blocos ou spikes solo
                     spawn_block = (
@@ -148,8 +167,7 @@ def run_phase(screen, clock, phase):
                     )
                     if spawn_block:
                         last_platform = elapsed_time
-
-                        # vertical walls: sempre no último terço, antes por chance
+                        # paredes verticais: sempre no último terço, antes por chance
                         if percent >= 66 or random.random() < vertical_chance:
                             # Paredão de 2 blocos
                             blocks.append(pygame.Rect(base_x,
@@ -165,14 +183,13 @@ def run_phase(screen, clock, phase):
                                                           ground_y-2*player_size-h,
                                                           player_size, h))
                         else:
-                            # Plataforma horizontal (máximo 1 grupo de spikes)
+                            # Plataforma horizontal (máximo 1 grupo)
                             length = random.randint(1, 10)
                             for i in range(length):
                                 blocks.append(pygame.Rect(base_x + i*player_size,
                                                           ground_y-player_size,
                                                           player_size, player_size))
                             if percent >= 33:
-                                # Escolhe início ou fim
                                 pos = random.choice([0, length-1])
                                 group_size = 1 if length <= 4 else random.choice([1, 2])
                                 for g in range(group_size):
@@ -184,8 +201,8 @@ def run_phase(screen, clock, phase):
                     else:
                         # Spikes solo após gap_time
                         if (elapsed_time - last_platform) >= gap_time:
-                            cnt = random.randint(1, 3)
-                            for i in range(cnt):
+                            count = random.randint(1, 3)
+                            for i in range(count):
                                 h = random.choice([player_size, player_size//2])
                                 sx = base_x + i*player_size
                                 spikes.append(pygame.Rect(sx, ground_y-h, player_size, h))
@@ -208,7 +225,6 @@ def run_phase(screen, clock, phase):
             if rotating:
                 angle = 180
             rotating = False
-            # Faíscas
             for _ in range(5):
                 sparks.append(Spark(player_rect.left, ground_y - 4))
             if keys[pygame.K_SPACE]:
@@ -223,12 +239,14 @@ def run_phase(screen, clock, phase):
                     for _ in range(5):
                         sparks.append(Spark(player_rect.left, b.top - 4))
                 else:
-                    running = False
+                    death_explosion(*player_rect.center)
+                    return
 
         # Colisões com spikes
         for s in spikes:
             if player_rect.colliderect(s):
-                running = False
+                death_explosion(*player_rect.center)
+                return
 
         # Rotação no ar
         if rotating:
@@ -272,13 +290,13 @@ def run_phase(screen, clock, phase):
         r_rect  = rotated.get_rect(center=player_rect.center)
         screen.blit(rotated, r_rect)
 
-        # Texto de progresso
+        # % de progresso
         pct_surf = font.render(f"{int(percent)}%", True, LINE_COLOR)
         screen.blit(pct_surf, (WIDTH - 120, 10))
 
         pygame.display.flip()
 
-        if percent >= 100:
+        if percent >= TOTAL_TIME:
             break
 
 
@@ -291,38 +309,33 @@ def main():
     # Carrega e redimensiona o mesmo background usado nos níveis
     bg_menu = pygame.image.load("assets/img/background.png").convert()
     bg_menu = pygame.transform.scale(bg_menu, screen.get_size())
-
     font = pygame.font.SysFont(None, 48)
 
     while True:
         dt = clock.tick(60) / 1000.0
-
-        # Desenha background do menu
         screen.blit(bg_menu, (0, 0))
 
         title = font.render("Selecione a fase", True, (255,255,255))
         opt1  = font.render("1 - Fase 1",       True, (255,255,255))
         opt2  = font.render("2 - Fase 2",       True, (255,255,255))
+        opt3  = font.render("3 - Fase 3",       True, (255,255,255))
         screen.blit(title, ((800-title.get_width())//2, 200))
         screen.blit(opt1,  ((800-opt1.get_width())//2, 300))
         screen.blit(opt2,  ((800-opt2.get_width())//2, 360))
+        screen.blit(opt3,  ((800-opt3.get_width())//2, 420))
 
         pygame.display.flip()
-
-        phase = None
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if ev.type == pygame.KEYDOWN:
                 if ev.key == pygame.K_1:
-                    phase = 1
+                    run_phase(screen, clock, 1)
                 elif ev.key == pygame.K_2:
-                    phase = 2
-
-        if phase:
-            run_phase(screen, clock, phase)
-
+                    run_phase(screen, clock, 2)
+                elif ev.key == pygame.K_3:
+                    run_phase(screen, clock, 3)  # inicia fase 3 vazia
 
 if __name__ == '__main__':
     main()
