@@ -46,7 +46,7 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
         vertical_chance  = 0.3
         min_platform_gap = 0.02 * TOTAL_TIME
     else:  # phase == 3
-        TOTAL_TIME       = 123.0
+        TOTAL_TIME       = 125.0
         spawn_interval   = 800
         block_chance     = 0.6
         vertical_chance  = 0.4
@@ -212,8 +212,10 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
 
                 else:  # phase == 3
                     if percent < 47:
-                        spawn_block = random.random() < block_chance and (elapsed_time - last_platform) >= min_platform_gap
-                        
+                        spawn_block = (
+                            random.random() < block_chance and
+                            (elapsed_time - last_platform) >= min_platform_gap
+                        )
                         if spawn_block:
                             last_platform = elapsed_time
 
@@ -229,6 +231,7 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
                                     spikes.append(pygame.Rect(base_x,
                                                               ground_y - 2*player_size - h2,
                                                               player_size, h2))
+                                    
                             else:
                                 length = random.randint(1, 10)
                                 for i in range(length):
@@ -238,9 +241,17 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
                                 if random.random() < 0.5:
                                     pos = random.choice([0, length-1])
                                     spikes.append(pygame.Rect(base_x + pos*player_size,
-                                                              ground_y - player_size - player_size,
+                                                              ground_y - 2 * player_size,
                                                               player_size, player_size))
-                                    
+                        
+                        else:
+                            count = random.randint(1, 3)
+                            for i in range(count):
+                                h2 = random.choice([player_size, player_size//2])
+                                spikes.append(pygame.Rect(base_x + i*player_size,
+                                                            ground_y - h2,
+                                                            player_size, h2))
+
                     elif percent >= 53:  # FLAPPY BIRD AQUI (percent >= 53)
                         # Configurações específicas do modo Flappy
                         gap_height = 3 * player_size  # Espaço para o UFO passar
