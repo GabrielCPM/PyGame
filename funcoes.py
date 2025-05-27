@@ -46,10 +46,10 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
         vertical_chance  = 0.3
         min_platform_gap = 0.02 * TOTAL_TIME
     else:  # phase == 3
-        TOTAL_TIME       = 125.0
-        spawn_interval   = 800
-        block_chance     = 0.6
-        vertical_chance  = 0.4
+        TOTAL_TIME       = 118.0
+        spawn_interval   = 900
+        block_chance     = 0.5
+        vertical_chance  = 0.5
         min_platform_gap = 0.02 * TOTAL_TIME
 
     # Gap de 6 blocos para spikes solo (fases ≥2)
@@ -75,6 +75,7 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
     portal_rect = None
     portal_spawned = False
     portal_particles = []
+    inverted_spikes = [] # picos invertidos em modo Flappy
     # novas partículas coloridas após 40% na fase 3
     phase3_particles = []
 
@@ -171,6 +172,10 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
                         spikes.append(pygame.Rect(base_x + i*player_size,
                                                   ground_y - h2,
                                                   player_size, h2))
+                    # Verifica conclusão da fase
+                    if percent >= 100:
+                        pygame.mixer.music.stop()
+                        return  # retorna para o menu
 
                 elif phase == 2:
                     spawn_block = (
@@ -209,78 +214,87 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
                             spikes.append(pygame.Rect(base_x + i*player_size,
                                                       ground_y - h2,
                                                       player_size, h2))
+                    # Verifica conclusão da fase
+                    if percent >= 100:
+                        pygame.mixer.music.stop()
+                        return  # retorna para o menu
 
                 else:  # phase == 3
                     if percent < 47:
                         spawn_block = (
-                            random.random() < block_chance and
-                            (elapsed_time - last_platform) >= min_platform_gap
+                        random.random() < block_chance and
+                        (elapsed_time - last_platform) >= min_platform_gap
                         )
                         if spawn_block:
                             last_platform = elapsed_time
-
                             if random.random() < vertical_chance:
                                 blocks.append(pygame.Rect(base_x,
-                                                          ground_y - player_size,
-                                                          player_size, player_size))
+                                                        ground_y - player_size,
+                                                        player_size, player_size))
                                 blocks.append(pygame.Rect(base_x,
-                                                          ground_y - 2*player_size,
-                                                          player_size, player_size))
+                                                        ground_y - 2*player_size,
+                                                        player_size, player_size))
                                 if random.random() < 0.5:
                                     h2 = random.choice([player_size, player_size//2])
                                     spikes.append(pygame.Rect(base_x,
-                                                              ground_y - 2*player_size - h2,
-                                                              player_size, h2))
-                                    
+                                                            ground_y - 2*player_size - h2,
+                                                            player_size, h2))
                             else:
                                 length = random.randint(1, 10)
                                 for i in range(length):
                                     blocks.append(pygame.Rect(base_x + i*player_size,
-                                                              ground_y - player_size,
-                                                              player_size, player_size))
+                                                            ground_y - player_size,
+                                                            player_size, player_size))
                                 if random.random() < 0.5:
                                     pos = random.choice([0, length-1])
                                     spikes.append(pygame.Rect(base_x + pos*player_size,
-                                                              ground_y - 2 * player_size,
-                                                              player_size, player_size))
-                        
+                                                            ground_y - player_size - player_size,
+                                                            player_size, player_size))
                         else:
-                            count = random.randint(1, 3)
+                            count = random.randint(2, 3)
                             for i in range(count):
                                 h2 = random.choice([player_size, player_size//2])
                                 spikes.append(pygame.Rect(base_x + i*player_size,
-                                                            ground_y - h2,
-                                                            player_size, h2))
+                                                        ground_y - h2,
+                                                        player_size, h2))
 
                     elif percent >= 53:  # FLAPPY BIRD AQUI (percent >= 53)
-                        # Configurações específicas do modo Flappy
-                        gap_height = 3 * player_size  # Espaço para o UFO passar
-                        obstacle_width = 70  # Largura dos obstáculos
-                        spike_height = 20    # Altura dos espinhos
-                        
-                        # Gera posição vertical aleatória do gap
+                        # Modo Flappy Bird
+                        gap_height = 3 * player_size
+                        obstacle_width = 70
+                        spike_height = 20
                         max_gap_y = HEIGHT - gap_height - GROUND_HEIGHT - 50
                         gap_y = random.randint(50, max_gap_y)
-                        
-                        # Cria obstáculo superior
+                        # Coluna superior
                         top_height = gap_y - spike_height
-                        blocks.append(pygame.Rect(WIDTH, 0, obstacle_width, top_height))
-                        spikes.append(pygame.Rect(WIDTH, top_height, obstacle_width, spike_height))
-                        
-                        # Cria obstáculo inferior
+                        blocks.append(pygame.Rect(base_x, 0, obstacle_width, top_height))
+                        # Pico invertido grudado à coluna superior
+                        inv_spike_rect = pygame.Rect(base_x, top_height, obstacle_width, spike_height)
+                        inverted_spikes.append(inv_spike_rect)
+                        # Coluna inferior
                         bottom_y = gap_y + gap_height
                         bottom_height = HEIGHT - GROUND_HEIGHT - bottom_y
-                        blocks.append(pygame.Rect(WIDTH, bottom_y, obstacle_width, bottom_height))
-                        spikes.append(pygame.Rect(WIDTH, bottom_y - spike_height, obstacle_width, spike_height))
-    
-                        # Espaçamento fixo entre obstáculos
-                        last_platform = elapsed_time  # Reinicia temporizador
+                        blocks.append(pygame.Rect(base_x, bottom_y, obstacle_width, bottom_height))
+                        # Pico normal na coluna inferior
+                        spikes.append(pygame.Rect(base_x, bottom_y - spike_height, obstacle_width, spike_height))
+                        last_platform = elapsed_time
+
+                    # Verifica conclusão da fase
+                    if percent >= 100:
+                        pygame.mixer.music.stop()
+                        return  # retorna para o menu
                             
-        # Move e limpa obstáculos
-        for s in spikes: s.x -= scroll_speed
-        for b in blocks: b.x -= scroll_speed
-        spikes[:] = [s for s in spikes if s.right>0]
-        blocks[:] = [b for b in blocks if b.right>0]
+        # Move obstáculos e spikes
+        for rect in blocks:
+            rect.x -= scroll_speed
+        for rect in spikes:
+            rect.x -= scroll_speed
+        for rect in inverted_spikes:
+            rect.x -= scroll_speed
+        # Remove fora da tela
+        blocks[:] = [b for b in blocks if b.right > 0]
+        spikes[:] = [s for s in spikes if s.right > 0]
+        inverted_spikes[:] = [s for s in inverted_spikes if s.right > 0]
 
         # Move portal e emite partículas rosas
         if portal_rect:
@@ -346,6 +360,10 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
             br = (s.x + s.width, s.bottom)
             pygame.draw.polygon(screen, OBSTACLE_COLOR, [bl, t, br])
             pygame.draw.polygon(screen, LINE_COLOR, [bl, t, br], 2)
+        for (x,y,w,h) in inverted_spikes:
+            pts = [(x,y),(x+w/2,y+h),(x+w,y)]
+            pygame.draw.polygon(screen, OBSTACLE_COLOR, pts)
+            pygame.draw.polygon(screen, LINE_COLOR, pts, 2)
 
         # Desenha portal rosa em forma de elipse fechada
         if portal_rect and portal_rect.right > 0:
@@ -360,7 +378,7 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
 
         # Salto contínuo
         keys = pygame.key.get_pressed()
-        if phase == 3 and percent > 50:
+        if phase == 3 and percent > 51.5:
             GRAVITY          = 0.5
             desired_height   = 0.75 * player_size
             JUMP_VELOCITY    = -math.sqrt(2 * GRAVITY * desired_height)
@@ -416,6 +434,12 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
                     death_explosion(player_rect.x, player_rect.y, clock, FPS, screen, bg_img)
                     pygame.mixer.music.stop()
                     return
+                
+        for (x,y,w,h) in inverted_spikes:
+            if player_rect.colliderect(pygame.Rect(x,y,w,h)) and not immortal:
+                death_explosion(player_rect.x, player_rect.y, clock, FPS, screen, bg_img)
+                pygame.mixer.music.stop()
+                return
 
         # Rotação no ar
         if rotating:
@@ -439,8 +463,10 @@ def run_phase(screen, clock, phase, background_music, immortal=False):
 
         pygame.display.flip()
 
-        if percent >= TOTAL_TIME:
-            break
+        # Verifica conclusão da fase
+        if percent >= 100:
+            pygame.mixer.music.stop()
+            return  # retorna para o menu
 
 def death_explosion(cx, cy, clock, FPS, screen, bg_img):
     particles = []
